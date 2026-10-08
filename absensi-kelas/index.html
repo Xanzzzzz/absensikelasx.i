@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Absensi Kelas</title>
+<meta name="theme-color" content="#0A0506">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="icon" href="logo.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap bar">
+    <a class="brand" href="#dashboard"><img src="logo.png" alt="Logo sekolah" onerror="this.replaceWith(Object.assign(document.createElement('i'),{className:'fa-solid fa-clipboard-user'}))"><span>Absensi Kelas</span></a>
+    <nav class="nav" aria-label="Navigasi utama">
+      <a href="#dashboard" class="active"><i class="fa-solid fa-chart-pie"></i><span>Dashboard</span></a>
+      <a href="#input"><i class="fa-solid fa-pen-to-square"></i><span>Absen</span></a>
+      <a href="#bulanan"><i class="fa-solid fa-table-cells"></i><span>Bulanan</span></a>
+      <a href="#semester"><i class="fa-solid fa-calendar-days"></i><span>Semester</span></a>
+      <a href="#siswa"><i class="fa-solid fa-users"></i><span>Siswa</span></a>
+    </nav>
+    <div class="bar-right">
+      <span id="status" class="status updating" role="status"><i class="fa-solid fa-circle-notch fa-spin"></i><b>Memuat</b></span>
+      <button id="refreshBtn" class="icon-btn" aria-label="Segarkan data"><i class="fa-solid fa-rotate"></i></button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="dashboard">
+    <div class="hero">
+      <h1>Absensi Kelas</h1>
+      <div class="chips"><span class="chip" id="meta"><i class="fa-solid fa-school"></i> Memuat data kelas…</span><span class="chip" id="waliInfo"><i class="fa-solid fa-user-tie"></i> Wali kelas</span><small id="lastSync"><i class="fa-regular fa-clock"></i> Belum disinkronkan</small></div>
+    </div>
+    <div id="errorBanner" class="banner" hidden><i class="fa-solid fa-triangle-exclamation"></i> Tidak dapat mengambil data terbaru.</div>
+    <div class="stats">
+      <article class="card stat main"><i class="fa-solid fa-percent ic"></i><span class="lbl">Kehadiran Terakhir</span><strong id="sRate">-</strong><small id="sRateT">&nbsp;</small></article>
+      <article class="card stat"><i class="fa-solid fa-user-check ic up"></i><span class="lbl">Hadir</span><strong id="sHadir">-</strong><small id="sHadirT">&nbsp;</small></article>
+      <article class="card stat"><i class="fa-solid fa-user-xmark ic down"></i><span class="lbl">Tidak Hadir</span><strong id="sAbsen">-</strong><small id="sAbsenT">&nbsp;</small></article>
+      <article class="card stat"><i class="fa-solid fa-calendar-check ic"></i><span class="lbl">Kehadiran Semester</span><strong id="sSem">-</strong><small id="sSemT">&nbsp;</small></article>
+    </div>
+    <div class="grid2 solo">
+      <article class="card">
+        <div class="card-head"><h2 id="chartTitle">Kehadiran Bulan Ini</h2></div>
+        <div class="chart-box"><canvas id="chart" role="img" aria-label="Grafik persentase kehadiran per hari"></canvas></div>
+      </article>
+    </div>
+  </section>
+
+  <section id="input">
+    <article class="card">
+      <div class="card-head"><h2><i class="fa-solid fa-pen-to-square"></i> Input Absensi</h2></div>
+      <p class="muted" id="abInfo"></p>
+      <div class="ab-tools">
+        <div class="field"><label for="abDate">Tanggal</label><input type="date" id="abDate"></div>
+        <button type="button" class="btn" id="allH"><i class="fa-solid fa-check-double"></i><span>Semua Hadir</span></button>
+        <button type="button" class="btn" id="allL"><i class="fa-solid fa-umbrella-beach"></i><span>Tandai Libur</span></button>
+      </div>
+      <div id="abList"></div>
+      <div class="sum" id="abSum"></div>
+      <button type="button" class="btn full" id="abSave"><i class="fa-solid fa-floppy-disk"></i><span>Simpan Absensi</span></button>
+      <p class="muted legend">H = Hadir • S = Sakit • I = Izin • A = Alfa</p>
+    </article>
+  </section>
+
+  <section id="bulanan">
+    <article class="card">
+      <div class="card-head"><h2><i class="fa-solid fa-table-cells"></i> Presensi Bulanan</h2><div class="seg" id="mTabs" role="group" aria-label="Pilih bulan"></div></div>
+      <p class="muted" id="mInfo"></p>
+      <div class="tbl-wrap big"><table class="mx" id="mTable"></table></div>
+      <p class="muted legend">H hadir • S sakit • I izin • A alfa • – libur/tidak ada KBM • kolom merah = akhir pekan</p>
+    </article>
+  </section>
+
+  <section id="semester">
+    <article class="card">
+      <div class="card-head"><h2><i class="fa-solid fa-calendar-days"></i> Rekapitulasi Semester <span id="semName"></span></h2></div>
+      <div class="filters">
+        <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input type="search" id="rkSearch" placeholder="Cari nama siswa" aria-label="Cari nama siswa"></div>
+        <select id="rkFilter" aria-label="Filter kehadiran"><option value="all">Semua siswa</option><option value="low">Kehadiran &lt; 75%</option><option value="ok">Kehadiran ≥ 75%</option></select>
+      </div>
+      <div class="tbl-wrap big"><table class="mx" id="rkTable"></table></div>
+    </article>
+  </section>
+
+  <section id="siswa">
+    <article class="card">
+      <div class="card-head"><h2><i class="fa-solid fa-users"></i> Data Siswa</h2><span class="muted" id="stCount"></span></div>
+      <div class="tbl-wrap big"><table class="mx" id="stTable"></table></div>
+    </article>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
