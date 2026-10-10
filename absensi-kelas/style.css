@@ -194,3 +194,32 @@ body.authed [data-guest]{display:none!important}
 #loginBox{display:none}
 body.show-login #loginBox{display:grid}
 .login{position:fixed;inset:0;z-index:100;place-items:center;padding:20px;background:rgba(5,2,3,.88);backdrop-filter:blur(4px)}
+
+/* ===== Responsif HP & tablet ===== */
+@media (max-width:960px){
+  /* backdrop-filter di .topbar membuat menu 'fixed' menempel ke header; matikan agar menu pindah ke bawah layar */
+  .topbar{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(10,5,6,.97)}
+  .nav{position:fixed;bottom:0;left:0;right:0;z-index:30;justify-content:space-around;gap:2px;background:rgba(23,12,15,.98);border-top:1px solid var(--border);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+  .nav a{flex-direction:column;gap:2px;font-size:.7rem;padding:8px 4px;flex:1;min-width:0;align-items:center;justify-content:center;min-height:48px;text-align:center}
+  .nav a i{font-size:1.1rem}
+  main.wrap{padding-bottom:96px}
+  .foot{padding-bottom:84px}
+  .status b{display:none}
+  .bar{gap:8px}.bar-right{gap:6px}
+  #toasts{bottom:auto}
+}
+@media (max-width:560px){
+  .brand span{display:none}
+  #loginOpen{padding:9px 14px}
+  .ab-row{flex-wrap:wrap}
+  .ab-row .seg{margin-left:auto}
+  .ab-tools .field,.ab-tools .btn{flex:1 1 100%}
+  .hero h1{font-size:1.9rem}
+  .card-head h2{font-size:1.05rem}
+  .stats{grid-template-columns:1fr 1fr}
+  .stat strong{font-size:1.4rem}
+  .mx{font-size:.7rem}.mx th,.mx td{padding:5px 5px}
+  .mx .nm{max-width:130px}
+}
+@media (max-width:360px){ .nav a{font-size:.62rem}.stats{grid-template-columns:1fr} }
+@media (max-width:900px){.stats .stat:last-child:nth-child(4){grid-column:1/-1}}
