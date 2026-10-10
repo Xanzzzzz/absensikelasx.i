@@ -10,19 +10,35 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="loginBox" class="login" role="dialog" aria-modal="true" aria-labelledby="lgTitle">
+  <form id="loginForm" class="card login-card">
+    <img src="logo.png" alt="" class="login-logo" onerror="this.style.display='none'">
+    <h1 id="lgTitle">Absensi Kelas</h1>
+    <p class="muted">Khusus pengurus (admin &amp; sekretaris). Tanpa login, halaman ini hanya bisa dilihat.</p>
+    <div class="field"><label for="lgUser">Username</label><input id="lgUser" autocomplete="username" required></div>
+    <div class="field"><label for="lgPass">Password</label><input id="lgPass" type="password" autocomplete="current-password" required></div>
+    <p class="err" id="lgErr" role="alert"></p>
+    <button class="btn full" id="lgBtn" type="submit"><i class="fa-solid fa-right-to-bracket"></i><span>Masuk</span></button>
+    <button class="btn full" id="lgCancel" type="button" style="background:transparent;border:1px solid var(--border)"><span>Batal</span></button>
+  </form>
+</div>
 <header class="topbar">
   <div class="wrap bar">
     <a class="brand" href="#dashboard"><img src="logo.png" alt="Logo sekolah" onerror="this.replaceWith(Object.assign(document.createElement('i'),{className:'fa-solid fa-clipboard-user'}))"><span>Absensi Kelas</span></a>
     <nav class="nav" aria-label="Navigasi utama">
       <a href="#dashboard" class="active"><i class="fa-solid fa-chart-pie"></i><span>Dashboard</span></a>
-      <a href="#input"><i class="fa-solid fa-pen-to-square"></i><span>Absen</span></a>
+      <a href="#input" data-auth><i class="fa-solid fa-pen-to-square"></i><span>Absen</span></a>
       <a href="#bulanan"><i class="fa-solid fa-table-cells"></i><span>Bulanan</span></a>
       <a href="#semester"><i class="fa-solid fa-calendar-days"></i><span>Semester</span></a>
       <a href="#siswa"><i class="fa-solid fa-users"></i><span>Siswa</span></a>
+      <a href="#akun" data-auth><i class="fa-solid fa-user-shield"></i><span>Akun</span></a>
     </nav>
     <div class="bar-right">
+      <button type="button" class="btn" id="loginOpen" data-guest><i class="fa-solid fa-right-to-bracket"></i><span>Masuk</span></button>
+      <span class="chip" id="userChip" data-auth></span>
       <span id="status" class="status updating" role="status"><i class="fa-solid fa-circle-notch fa-spin"></i><b>Memuat</b></span>
       <button id="refreshBtn" class="icon-btn" aria-label="Segarkan data"><i class="fa-solid fa-rotate"></i></button>
+      <button id="logoutBtn" data-auth class="icon-btn" aria-label="Keluar"><i class="fa-solid fa-right-from-bracket"></i></button>
     </div>
   </div>
 </header>
@@ -48,7 +64,7 @@
     </div>
   </section>
 
-  <section id="input">
+  <section id="input" data-auth>
     <article class="card">
       <div class="card-head"><h2><i class="fa-solid fa-pen-to-square"></i> Input Absensi</h2></div>
       <p class="muted" id="abInfo"></p>
@@ -60,6 +76,7 @@
       <div id="abList"></div>
       <div class="sum" id="abSum"></div>
       <button type="button" class="btn full" id="abSave"><i class="fa-solid fa-floppy-disk"></i><span>Simpan Absensi</span></button>
+      <button type="button" class="btn full" id="abDel" hidden style="margin-top:10px"><i class="fa-solid fa-trash"></i><span>Hapus Absensi Tanggal Ini</span></button>
       <p class="muted legend">H = Hadir • S = Sakit • I = Izin • A = Alfa</p>
     </article>
   </section>
@@ -90,8 +107,26 @@
       <div class="tbl-wrap big"><table class="mx" id="stTable"></table></div>
     </article>
   </section>
+  <section id="akun" data-auth>
+    <article class="card">
+      <div class="card-head"><h2><i class="fa-solid fa-user-shield"></i> Akun Saya</h2></div>
+      <p class="muted" id="akInfo"></p>
+      <div class="ab-tools">
+        <div class="field"><label for="pwOld">Password lama</label><input type="password" id="pwOld" autocomplete="current-password"></div>
+        <div class="field"><label for="pwNew">Password baru (min. 8 karakter)</label><input type="password" id="pwNew" autocomplete="new-password"></div>
+        <button type="button" class="btn" id="pwSave"><i class="fa-solid fa-key"></i><span>Ganti Password</span></button>
+      </div>
+    </article>
+    <article class="card" id="logCard" hidden>
+      <div class="card-head"><h2><i class="fa-solid fa-clock-rotate-left"></i> Riwayat Aktivitas</h2>
+        <select id="lgFilter" aria-label="Filter aksi"><option value="all">Semua aksi</option><option>INPUT</option><option>UBAH</option><option>HAPUS</option><option>LOGIN</option><option>LOGIN GAGAL</option><option>GANTI PASSWORD</option></select></div>
+      <p class="muted">300 aktivitas terbaru. Riwayat lengkap ada di sheet "Riwayat".</p>
+      <div class="tbl-wrap big"><table class="mx" id="logTable"></table></div>
+    </article>
+  </section>
 </main>
 
+<div id="toasts" aria-live="polite"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="script.js"></script>
 </body>

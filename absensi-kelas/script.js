@@ -1,6 +1,6 @@
 // ================= KONFIGURASI =================
 const CONFIG = { API_URL: "https://script.google.com/macros/s/AKfycbxNvzqyiHrzoWQm6Lc2gdQKlxpSqrtcFwNMkWM8-iGdtvmcxHXnwApo2lS4VyZPtzgymA/exec", TIMEOUT: 25000, LOW: 0.75 };
-const state = { data: null, mi: null, draft: {}, date: "", cur: null, exists: false, busy: false, chart: null };
+const state = { user: null, token: sessionStorage.getItem("absensi_token") || "", log: [], data: null, mi: null, draft: {}, date: "", cur: null, exists: false, busy: false, chart: null };
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const MONTHS = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
@@ -29,25 +29,69 @@ function setStatus(s) {
   $("#errorBanner").hidden = s !== "error";
 }
 
-// ================= API =================
-async function api(opt) {
+// ================= API & LOGIN =================
+async function api(body) {
   if (!CONFIG.API_URL || CONFIG.API_URL.startsWith("YOUR_")) throw new Error("API_URL belum diatur");
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), CONFIG.TIMEOUT);
   try {
-    const res = await fetch(CONFIG.API_URL, { ...opt, signal: ctrl.signal, redirect: "follow" });
+    const res = await fetch(CONFIG.API_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ ...body, token: state.token }), signal: ctrl.signal, redirect: "follow" });
     const j = await res.json();
+    if (j && j.code === "AUTH") { logoutLocal(j.message); throw new Error(j.message); }
     if (!j || !j.success) throw new Error((j && j.message) || "Permintaan gagal");
     return j;
   } finally { clearTimeout(t); }
 }
+function showLogin(msg) { document.body.classList.add("show-login"); $("#lgErr").textContent = msg || ""; $("#lgUser").focus(); }
+function hideLogin() { document.body.classList.remove("show-login"); }
+function logoutLocal(msg) {
+  state.token = ""; state.user = null; state.log = [];
+  sessionStorage.removeItem("absensi_token"); document.body.classList.remove("authed"); hideLogin();
+  if (msg) toast(msg, "info");
+  load(); // kembali ke mode lihat saja
+}
+async function doLogin(e) {
+  e.preventDefault();
+  const b = $("#lgBtn"), orig = b.innerHTML;
+  b.disabled = true; b.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i><span>Memeriksa…</span>'; $("#lgErr").textContent = "";
+  try {
+    const r = await api({ action: "login", username: $("#lgUser").value.trim(), password: $("#lgPass").value });
+    state.token = r.token; sessionStorage.setItem("absensi_token", r.token); state.user = r.user; state.data = r.data;
+    $("#lgPass").value = ""; hideLogin(); render(); setStatus("ok");
+  } catch (err) { $("#lgErr").textContent = err.message; }
+  finally { b.disabled = false; b.innerHTML = orig; }
+}
 async function load() {
   setStatus("updating");
   try {
-    state.data = (await api({})).data;
-    render(); setStatus("ok");
+    const r = await api({ action: "data" }); // boleh tanpa login (mode lihat saja)
+    if (state.token && !r.user) { state.token = ""; sessionStorage.removeItem("absensi_token"); toast("Sesi berakhir, silakan login lagi untuk mengubah data.", "info"); }
+    state.user = r.user || null; state.data = r.data; hideLogin(); render(); setStatus("ok");
     const n = new Date(); $("#lastSync").innerHTML = `<i class="fa-regular fa-clock"></i> Terakhir diperbarui ${p2(n.getHours())}:${p2(n.getMinutes())}`;
   } catch (e) { setStatus("error"); toast(e.message, "error"); }
+}
+function applyUser() {
+  const u = state.user;
+  document.body.classList.toggle("authed", !!u);
+  if (!u) return;
+  $("#userChip").innerHTML = `<i class="fa-solid fa-user"></i><span>${esc(u.name)}</span>`;
+  $("#akInfo").textContent = `Masuk sebagai ${u.name} (${u.username}) • peran: ${u.role}`;
+  $("#logCard").hidden = !u.canLog; if (u.canLog) loadLog();
+}
+async function loadLog() { try { state.log = (await api({ action: "log" })).log; drawLog(); } catch (e) {} }
+function drawLog() {
+  const f = $("#lgFilter").value, rows = state.log.filter((x) => f === "all" || x[4] === f);
+  $("#logTable").innerHTML = rows.length ? `<thead><tr><th class="lf">Waktu</th><th class="lf">Pengguna</th><th>Aksi</th><th>Tanggal</th><th class="lf">Detail</th></tr></thead><tbody>` +
+    rows.map((x) => `<tr><td class="lf">${esc(x[0])}</td><td class="lf">${esc(x[2])}<br><small class="muted">${esc(x[1])} • ${esc(x[3])}</small></td>
+    <td><span class="pill ${/HAPUS|GAGAL/.test(x[4]) ? "low" : "ok"}">${esc(x[4])}</span></td><td>${x[5] ? fmtDate(x[5]) : "-"}</td><td class="dt">${esc(x[6])}</td></tr>`).join("") + "</tbody>"
+    : "<tbody><tr><td>" + emptyHTML("Belum ada riwayat", "Aktivitas akan tercatat di sini.") + "</td></tr></tbody>";
+}
+async function changePw() {
+  const o = $("#pwOld").value, n = $("#pwNew").value;
+  if (!o || n.length < 8) { toast("Isi password lama dan password baru (min. 8 karakter).", "error"); return; }
+  try { await api({ action: "password", oldPassword: o, newPassword: n }); $("#pwOld").value = $("#pwNew").value = ""; toast("Password berhasil diganti.", "success"); }
+  catch (e) { toast(e.message, "error"); }
 }
 
 // ================= DATA TURUNAN =================
@@ -83,7 +127,7 @@ function render() {
     const i = d.months.findIndex((m) => m.year === +key.slice(0, 4) && m.n === +key.slice(5, 7));
     state.mi = i >= 0 ? i : 0;
   }
-  drawDash(past, last); drawMonthTabs(); drawMonth(); drawSemester(); drawStudents(); loadDraft();
+  drawDash(past, last); drawMonthTabs(); drawMonth(); drawSemester(); drawStudents(); loadDraft(); applyUser();
 }
 function drawDash(past, last) {
   const d = state.data, c = last ? last.c : { H: 0, S: 0, I: 0, A: 0, t: 0 };
@@ -163,17 +207,25 @@ function drawForm() {
   const c = cnt(Object.values(state.draft).join("")), L = Object.values(state.draft).filter((v) => v === "-").length;
   $("#abSum").innerHTML = `<span>Hadir <b>${c.H}</b></span><span>Sakit <b>${c.S}</b></span><span>Izin <b>${c.I}</b></span><span>Alfa <b>${c.A}</b></span>` + (L ? `<span>Libur <b>${L}</b></span>` : "");
   $("#abSave").disabled = !state.cur || state.busy;
+  $("#abDel").hidden = !(state.user && state.user.canDelete && state.exists);
 }
 async function save() {
   if (state.busy || !state.cur) return;
   const btn = $("#abSave"), orig = btn.innerHTML;
   state.busy = true; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i><span>Menyimpan…</span>';
   try {
-    const r = await api({ method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "attendance", date: state.date, entries: state.data.students.map((s) => ({ nis: s.nis, status: state.draft[s.nis] })) }) });
+    const r = await api({ action: "attendance", date: state.date, entries: state.data.students.map((s) => ({ nis: s.nis, status: state.draft[s.nis] })) });
     state.data = r.data; render(); toast(r.message || "Absensi tersimpan", "success");
   } catch (e) { toast(e.message, "error"); }
   finally { state.busy = false; btn.disabled = false; btn.innerHTML = orig; }
+}
+async function del() {
+  if (state.busy || !state.cur || !state.exists) return;
+  if (!confirm(`Hapus SEMUA absensi tanggal ${fmtDate(state.date)}?\nTindakan ini dicatat di riwayat atas nama ${state.user.name}.`)) return;
+  state.busy = true;
+  try { const r = await api({ action: "delete", date: state.date }); state.data = r.data; render(); toast(r.message, "success"); }
+  catch (e) { toast(e.message, "error"); }
+  finally { state.busy = false; if (state.data) drawForm(); }
 }
 
 // ================= INIT =================
@@ -182,8 +234,13 @@ dEl.onchange = (e) => { state.date = e.target.value; if (state.data && state.dat
 $("#abList").onclick = (e) => { const b = e.target.closest("button[data-v]"); if (!b) return; state.draft[b.parentNode.dataset.nis] = b.dataset.v; drawForm(); };
 const setAll = (v) => () => { if (!state.data) return; state.data.students.forEach((s) => (state.draft[s.nis] = v)); drawForm(); };
 $("#allH").onclick = setAll("H"); $("#allL").onclick = setAll("-");
-$("#abSave").onclick = save;
+$("#abSave").onclick = save; $("#abDel").onclick = del;
 $("#mTabs").onclick = (e) => { const b = e.target.closest("button[data-i]"); if (!b) return; state.mi = +b.dataset.i; drawMonthTabs(); drawMonth(); };
 $("#refreshBtn").onclick = load;
-["#rkSearch", "#rkFilter"].forEach((s) => ($(s).oninput = drawSemester));
+$("#loginForm").onsubmit = doLogin;
+$("#loginOpen").onclick = () => showLogin(); $("#lgCancel").onclick = hideLogin;
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") hideLogin(); });
+$("#logoutBtn").onclick = async () => { try { await api({ action: "logout" }); } catch (e) {} logoutLocal(""); };
+$("#pwSave").onclick = changePw; $("#lgFilter").onchange = drawLog;
+["#rkSearch", "#rkFilter"].forEach((x) => ($(x).oninput = drawSemester));
 load();

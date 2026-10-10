@@ -178,3 +178,19 @@ select{appearance:auto}
 .grid2.solo{grid-template-columns:1fr}
 .grid2.solo .chart-box{height:340px}
 @media (max-width:640px){.grid2.solo .chart-box{height:260px}}
+
+/* ===== Login & Akun ===== */
+.login-card{width:min(380px,100%);padding:28px;display:grid;gap:14px}
+.login-card h1{text-align:center;font-size:1.4rem;margin:0}.login-card p{text-align:center;margin:0}
+.login-logo{width:64px;height:64px;object-fit:contain;margin:0 auto}
+.login .err{color:var(--danger);min-height:1.2em;font-size:.85rem}
+.field input[type=password],.field input:not([type]){width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--border);background:var(--card2);color:var(--text);font:inherit}
+#userChip{max-width:160px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#abDel{background:transparent;border:1px solid var(--danger);color:var(--danger)}
+.mx td.dt{white-space:normal;text-align:left;min-width:280px}.mx td.lf{text-align:left}
+@media (max-width:640px){#userChip span{display:none}}
+body:not(.authed) [data-auth]{display:none!important}
+body.authed [data-guest]{display:none!important}
+#loginBox{display:none}
+body.show-login #loginBox{display:grid}
+.login{position:fixed;inset:0;z-index:100;place-items:center;padding:20px;background:rgba(5,2,3,.88);backdrop-filter:blur(4px)}
